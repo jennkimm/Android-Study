@@ -5,7 +5,7 @@
 - 관심사 분리 : 별개의 책임이 있는 여러 클래스로 앱을 나눠야 한다.
 - 모델에서 UI 만들기 : 앱의 Views 객체 및 앱 구성요소와 독립되어 있는 모델의 앱 데이터 처리를 담당하는 모델에서 UI를 만들어야 한다.
 
-![Untitled](MVC,%20MVP,%20MVVM%20445e2e8806d246a88fda9a42193b9698/Untitled.png)
+![Untitled](https://github.com/jennkimm/Android-Study/blob/main/resources/1-1.png)
 
 ⇒ 따라서, UI 컨트롤러의 책임과 ViewModel의 책임이 달라야 한다.
 
@@ -23,7 +23,7 @@
 
 ### ViewModel의 수명 주기
 
-![Untitled](MVC,%20MVP,%20MVVM%20445e2e8806d246a88fda9a42193b9698/Untitled%201.png)
+![Untitled](https://github.com/jennkimm/Android-Study/blob/main/resources/1-2.png)
 
 - 프레임워크는 활동이나 프래그먼트의 범위가 유지되는 동안 ViewModel을 유지
 - 소유자가 화면 회전과 같은 구성 변경으로 인해 소멸되는 경우에도 소멸되지 않습니다. (소유자의 새 인스턴스는 기존 ViewModel 인스턴스에 다시 연결 )

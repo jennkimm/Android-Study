@@ -9,3 +9,4 @@
 ### 2주차
 [2021.09.18 - 2021.09.24] </br>
 01. [Data Binding](https://github.com/jennkimm/Android-Study/blob/main/contents/DataBinding.md) by @rosesua318 </br>
+02. [View Binding과 Data Binding](https://github.com/jennkimm/Android-Study/blob/main/contents/ViewBinding-DataBinding.md) by @jennkimm

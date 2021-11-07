@@ -246,3 +246,376 @@ data 요소 내에서 여러 variable 요소를 사용할 수 있다. 각 variab
 ```
 
 <br><br>
+
+### 3. observable data object로 작업
+Observability는 object의 데이터 변경 사항을 다른 이에게 알릴 수 있는 능력을 말한다. 데이터 바인딩 라이브러리를 사용하면 object, 필드 또는 컬렉션을 관찰할 수 있다.
+데이터 바인딩을 사용하면 data object의 데이터가 변경될 때 리스너에 알릴 수 있다. observable 클래스에는 object, 필드 그리고 컬렉션의 세가지 유형이 있다. 이러한 observable data object 중 하나가 UI에 바인딩 되어 있고 data object의 프로퍼티가 변경 되면 UI가 자동으로 업데이트 된다.
+
+#### Observable fields
+일부 작업은 observable interface를 구현하는 클래스를 만드는 것과 관련이 있다. 클래스에 프로퍼티가 몇 개만 있는 경우에는 그렇게 할 필요는 없다. 이 경우에는 generic observable class와 primitive-specific 클래스를 사용하여 필드를 관찰 가능하도록 설정할 수 있다.
+ 
+ - ObservableBoolean
+ - ObservableByte
+ - ObservableChar
+ - ObservableShort
+ - ObservableInt
+ - ObservableLong
+ - ObservableFloat
+ - ObservableDouble
+ - ObservableParcelable
+ 
+관찰 가능한 필드는 단일 필드를 가진 자체 포함 observable object이다. 기본 버전은 액세스 작업 중에 boxing과 unboxing을 피한다. 이 메커니즘을 사용하려면, 읽기 전용 프로퍼티를 만들면 된다. 밑의 예제 코드를 보면,
+
+```kotlin
+class User {
+    val firstName = ObservableField<String>()
+    val lastName = ObservableField<String>()
+    val age = ObservableInt()
+}
+```
+val 키워드를 사용하여 읽기 전용 프로퍼티로 만든 것을 알수 있다.
+필드 값에 액세스하려면 set()과 get() 접근자 메서드를 사용하거나 코틀린 프로퍼티 구문을 사용하면 된다. 밑의 예제 코드를 보면,
+
+```kotlin
+user.firstName = "Google"
+val age = user.age
+```
+이렇게 코틀린 속성 구문인 user.firstName, user.age를 사용하여 필드 값을 액세스하는 것을 알 수 있다.
+
+#### Observable collections
+일부 앱은 동적 구조를 사용하여 데이터를 보관한다. Observable collection을 사용하면 키를 사용하여 이러한 구조에 액세스할 수 있다. ObservableArrayMap 클래스는 키가 String과 같은 참조 타입일 때 유용하다. 밑의 예제 코드를 보면,
+
+```kotlin
+ObservableArrayMap<String, Any>().apply {
+    put("firstName", "Google")
+    put("lastName", "Inc.")
+    put("age", 17)
+}
+```
+키를 참조 타입인 String을 사용한 것을 알 수 있다.
+레이아웃에서 밑의 예제 코드와 같이 문자열 키를 사용하여 map을 찾을 수 있다.
+```kotlin
+<data>
+    <import type="android.databinding.ObservableMap"/>
+    <variable name="user" type="ObservableMap&lt;String, Object&gt;"/>
+</data>
+…
+<TextView
+    android:text="@{user.lastName}"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+<TextView
+    android:text="@{String.valueOf(1 + (Integer)user.age)}"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+```
+<br> <br>
+ObservableArrayList 클래스는 다음과 같이 키가 정수일 때 유용하다. 밑의 예제 코드의 ObservableArrayList는 다음과 같다.
+
+```kotlin
+ObservableArrayList<Any>().apply {
+    add("Google")
+    add("Inc.")
+    add(17)
+}
+```
+
+레이아웃에서 밑의 예제 코드와 같이 인덱스를 통해 리스트에 접근할 수 있다.
+```
+<data>
+    <import type="android.databinding.ObservableList"/>
+    <import type="com.example.my.app.Fields"/>
+    <variable name="user" type="ObservableList&lt;Object&gt;"/>
+</data>
+…
+<TextView
+    android:text='@{user[Fields.LAST_NAME]}'
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+<TextView
+    android:text='@{String.valueOf(1 + (Integer)user[Fields.AGE])}'
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"/>
+```
+
+<br>
+
+#### Observable objects
+Observable interface를 구현하는 클래스를 통해 observable object에 대한 프로퍼티 변경 사항을 알리려는 리스너를 등록할 수 있다.
+
+Observable interface에는 리스너를 추가 및 제거하는 메커니즘이 있지만 알림을 보낼 시기를 결정해야 한다. 개발을 쉽게하기 위해 데이터 바인딩 라이브러리는 리스너 등록 메커니즘을 구현하는 BaseObservable 클래스를 제공한다. BaseObservable을 구현하는 데이터 클래스는 프로퍼티가 변경될 때 이를 알리는 역할을 한다. 이 작업은 getter에 바인딩 가능한 annotation을 할당하고 setter에 notifyPropertyChanged() 메서드를 호출하여 수행된다. 밑의 예제 코드를 보면, 
+
+```kotlin
+class User : BaseObservable() {
+
+    @get:Bindable
+    var firstName: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.firstName)
+        }
+
+    @get:Bindable
+    var lastName: String = ""
+        set(value) {
+            field = value
+            notifyPropertyChanged(BR.lastName)
+        }
+}
+```
+애노테이션과 notifyPropertyChanged() 메서드를 이용한 것을 알 수 있다.
+
+
+<br>
+
+#### Lifecycle-aware objects
+앱의 레이아웃은 데이터 바인딩 소스에 바인딩하여 데이터 변경 사항을 UI에 자동으로 알릴 수 있다. 이렇게 하면 바인딩은 라이프사이클을 인식하며 UI가 화면에 표시될 때만 트리거 된다.
+
+데이터 바인딩은 현재 StateFlow 및 LiveData를 지원한다. 
+
+[StateFlow 사용하기]
+앱이 코루틴과 함께 코틀린을 사용하는 경우 StateFlow object를 데이터 바인딩 소스로 사용할 수 있다. 바인딩 클래스와 함께 StateFlow object를 사용하려면 StateFlow object의 범위를 정의할 lifecycle owner를 지정해야 한다. 밑의 예제 코드에서는 바인딩 클래스가 인스턴스화 된 후 lifecycle owner를 지정한다.
+
+```kotlin
+class ViewModelActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Inflate view and obtain an instance of the binding class.
+        val binding: UserBinding = DataBindingUtil.setContentView(this, R.layout.user)
+
+        // Specify the current activity as the lifecycle owner.
+        binding.lifecycleOwner = this
+    }
+}
+```
+
+데이터 바인딩은 Viewmodel object와 원활하게 작동한다. 밑의 예제와 같이 StateFlow와 ViewModel을 함께 사용할 수 있다.
+
+```kotlin
+class ScheduleViewModel : ViewModel() {
+
+    private val _username = MutableStateFlow<String>("")
+    val username: StateFlow<String> = _username
+
+    init {
+        viewModelScope.launch {
+            _username.value = Repository.loadUserName()
+        }
+    }
+}
+```
+
+레이아웃에서 밑의 예제와 같이 바인딩 식을 사용하여 해당 뷰에 ViewModel object의 프로퍼티와 메서드를 할당한다.
+
+```
+<TextView
+    android:id="@+id/name"
+    android:text="@{viewmodel.username}" />
+```
+-> UI는 사용자의 이름 값이 변경될 때마다 자동으로 업데이트 된다.
+
+[LiveData를 사용하여 UI에 데이터 변경 알리기]
+LiveData object를 데이터 바인딩 소스로 사용하여 데이터 변경 사항에 대해 UI에 자동으로 알릴 수 있다. 
+observable field와 같이 관찰 가능한 항목을 구현하는 object와 달리 LiveData object는 데이터 변경을 관찰하는 관찰자의 라이프 사이클을 알고 있다. 
+바인딩 클래스와 함께 LiveData object를 사용하려면 LiveData object의 범위를 정의할 lifecycle owner를 지정해야 한다. 밑의 예에서는 바인딩 클래스가 인스턴스화된 후 lifecycle owner를 지정한다.
+```kotlin
+class ViewModelActivity : AppCompatActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        // Inflate view and obtain an instance of the binding class.
+        val binding: UserBinding = DataBindingUtil.setContentView(this, R.layout.user)
+
+        // Specify the current activity as the lifecycle owner.
+        binding.setLifecycleOwner(this)
+    }
+}
+```
+
+ViewModel 구성 요소를 사용하여 UI 관련 데이터를 관리하면 데이터를 레이아웃에 바인딩할 수 있다. ViewModel 구성 요소에서 LiveData object를 사용하여 데이터를 변환하거나 여러 데이터 소스를 병합할 수 있다. 밑의 예제에서는 ViewModel에서 데이터를 변환하는 방법을 보여준다.
+
+```kotlin
+class ScheduleViewModel : ViewModel() {
+    val userName: LiveData
+
+    init {
+        val result = Repository.userName
+        userName = Transformations.map(result) { result -> result.value }
+    }
+}
+```
+LiveData인 userName을 ViewModel인 ScheduleViewModel에서 변환하고 있는 것을 알 수 있다.
+
+<br><br>
+
+### 4. 생성된 바인딩 클래스
+#### 즉시 Binding
+변수 또는 observable object가 변경되면 바인딩이 다음 프레임 전에 변경되도록 예약된다. 그러나 바인딩을 즉시 실행해야 하는 경우가 있다. 강제로 실행하려면 executePendingBindings() 메서드를 사용하면 된다.
+
+<br><br>
+
+### 5. Binding adapters
+바인딩 어댑터는 값을 설정하는 적절한 프레임워크 호출을 담당한다. setText() 메서드를 호출하는 것과 같은 프로퍼티 값을 설정하는 것이 한 예이다. 또 다른 예는 setOnClickListener() 메서드를 호출하는 것과 같은 이벤트 리스너를 설정하는 것이다.
+
+데이터 바인딩 라이브러리를 사용하면 어댑터를 사용하여 반환되는 object의 타입을 지정하기 위해 호출된 메서드를 지정할 수 있다.
+
+#### 속성 값 설정
+바인딩 된 값이 변경될 때 마다 생성된 바인딩 클래스는 바인딩 표현식을 사용하여 뷰에서 setter 메서드를 호출해야 한다. 데이터 바인딩 라이브러리에서 메서드를 자동으로 결정하거나 메서드를 명시적으로 선언하거나 맞춤 로직을 제공해 메서드를 선택하도록 허용할 수 있다.
+
+[자동 메서드 선택]
+이름이 example인 속성의 경우 라이브러리는 호환 가능한 타입을 인수로 허용하는 setExample(arg) 메서드를 자동으로 찾으려고 한다. 속성의 네임스페이스는 고려되지 않으며 메서드 검색 시 속성 이름 및 타입만 사용된다.
+
+예를 들어 android:text="@{user.name}" 표현식이 있는 경우 라이브러리는 user.getName()에서 반환한 타입을 허용하는 setText(arg) 메서드를 찾는다. user.getName()의 반환 유형이 String이면 라이브러리는 String 인수를 허용하는 setText() 메서드를 찾는다. 표현식이 int를 대신 반환하면 라이브러리는 int 인수를 허용하는 setText() 메서드를 검색한다. 표현식은 올바른 유형을 반환해야 한다. 필요하다면 반환 값을 변환할 수 있다.
+
+지정된 이름의 속성이 없더라도 데이터 바인딩은 작동한다. 그때는 데이터 바인딩을 사용하여 setter에 필요한 속성을 생성할 수 있다. 예를 들어 밑의 코드를 보면 지원 클래스 DrawerLayout에는 어떤 속성도 없지만 많은 setter가 있다. 다음 레이아웃은 자동으로 setScrimColor(int) 메서드와 setDrawerListener(DrawerListener) 메서드를 각각 app:scrimColor 속성과 app:drawerListener 속성의 setter로 사용한다.
+```
+<android.support.v4.widget.DrawerLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:scrimColor="@{@color/scrim}"
+        app:drawerListener="@{fragment.drawerListener}">
+```
+
+<br>
+[사용자 지정 메서드 이름 지정] <br>
+일부 속성에는 이름이 일치하지 않는 setter가 있다. 이러한 상황에서 속성은 BindingMethods annotation을 사용하여 setter와 연결될 수도 있다. annotation은 클래스와 함께 사용되며 이름이 바뀐 각 메서드에 하나씩 여러 BindingMethod annotation을 포함할 수 있다. BindingMethod는 앱의 어떤 클래스에도 추가할 수 있는 annotation이다. 밑의 예에서는 android:tint 속성은 setTint() 메서드가 아닌 setImageTintList(ColorStateList) 메서드와 연결된다.
+
+```kotlin
+@BindingMethods(value = [
+        BindingMethod(
+            type = android.widget.ImageView::class,
+            attribute = "android:tint",
+            method = "setImageTintList")])
+```
+<br>
+
+[사용자 지정 로직 제공]
+일부 속성에는 사용자 지정 바인딩 로직이 필요하다. 예를 들어 밑의 코드를 보면 android:paddingLeft 속성에는 연결된 setter가 없다. 대신 setPadding(left, top, right, bottom) 메서드가 제공된다. BindingAdapter annotation이 있는 정적 바인딩 어댑터 메서드를 사용하면 속성의 setter가 호출되는 방식을 사용자 지정 설정할 수 있다.
+
+```kotlin
+@BindingAdapter("android:paddingLeft")
+    fun setPaddingLeft(view: View, padding: Int) {
+        view.setPadding(padding,
+                    view.getPaddingTop(),
+                    view.getPaddingRight(),
+                    view.getPaddingBottom())
+    }
+```
+
+매개변수 타입은 중요하다. 첫 번째 매개변수는 속성과 연결된 뷰의 타입을 결정한다. 두 번째 매개변수는 지정된 속성의 바인딩 표현식에서 허용되는 타입을 결정한다.
+개발자가 정의하는 바인딩 어댑터는 충돌이 발생하면 Android 프레임워크에서 제공하는 기본 어댑터보다 우선 적용된다.
+
+또한 밑의 예에서와 같이 여러 속성을 받는 어댑터도 있을 수 있다.
+```kotlin
+@BindingAdapter("imageUrl", "error")
+    fun loadImage(view: ImageView, url: String, error: Drawable) {
+        Picasso.get().load(url).error(error).into(view)
+    }
+```
+
+밑의 예제 코드와 같이 레이아웃에서 어댑터를 사용할 수 있다.
+```
+<ImageView app:imageUrl="@{venue.imageUrl}" app:error="@{@drawable/venueError}" />
+
+```
+imageUrl과 error가 모두 ImageView 객체에 사용되며 imageUrl은 문자열이고 error는 Drawable이면 어댑터가 호출된다. 따라서, 위의 예제 코드는 이 조건에 부합하므로 어댑터를 호출할 수 있는 것이다. 
+
+속성이 하나라도 설정될 때 어댑터가 호출되도록 하려면 밑의 예에서와 같이 어댑터의 선택적 requireAll 플래그를 false로 설정할 수 있다.
+```kotlin
+ @BindingAdapter(value = ["imageUrl", "placeholder"], requireAll = false)
+    fun setImageUrl(imageView: ImageView, url: String?, placeHolder: Drawable?) {
+        if (url == null) {
+            imageView.setImageDrawable(placeholder);
+        } else {
+            MyImageLoader.loadInto(imageView, url, placeholder);
+        }
+    }
+```
+이렇게 하면 속성이 하나라도 설정 되면 해당 어댑터가 호출이 된다.
+
+<br><br>
+
+### 6. 양방향 데이터 바인딩
+밑의 코드와 같이 단방향 데이터 바인딩을 사용하면 프로퍼티에 값을 설정하고 이 프로퍼티의 변경에 반응하는 리스너를 설정할 수 있다.
+```
+<CheckBox
+        android:id="@+id/rememberMeCheckBox"
+        android:checked="@{viewmodel.rememberMe}"
+        android:onCheckedChanged="@{viewmodel.rememberMeChanged}"
+    />
+```
+밑의 코드와 같이 양방향 데이터 바인딩은 이 프로세스에 대해서 바로가기를 제공한다.
+```
+<CheckBox
+    android:id="@+id/rememberMeCheckBox"
+    android:checked="@={viewmodel.rememberMe}"
+/>
+```
+'=' 기호가 포함된 @={} 표기법은 프로퍼티와 관련된 데이터 변경사항을 받는 동시에 사용자 업데이트를 수신 대기한다.
+
+<br>
+
+#### 사용자 지정 속성을 사용한 양방향 데이터 바인딩
+양방향 데이터 바인딩에 사용자 지정 속성을 사용하려면 @InverseBindingAdapter annotation과 @InverseBindingMethod annotation을 사용해야 한다.
+
+예로 들어, MyView라는 사용자 지정 뷰의 time 속성에 양방향 데이터 바인딩을 사용하려면 다음 단계를 완료해야 한다.
+
+1. 초기 값을 설정하고 값이 변경될 때 업데이트하는 메서드에 @BindingAdapter를 사용하여 annotation을 추가한다.
+```kotlin
+@BindingAdapter("time")
+    @JvmStatic fun setTime(view: MyView, newValue: Time) {
+        // Important to break potential infinite loops.
+        if (view.time != newValue) {
+            view.time = newValue
+        }
+    }
+```
+
+2. 뷰에서 값을 읽는 메서드에 @InverseBindingAdapter를 사용하여 annotation을 추가한다.
+```kotlin
+@InverseBindingAdapter("time")
+    @JvmStatic fun getTime(view: MyView) : Time {
+        return view.getTime()
+    }
+```
+
+이 단계만 거치면 속성이 언제 또는 어떻게 변경되는지는 인식하지 못한다. 속성의 변경 시기 또는 방식을 알기 위해서는 뷰에 리스너를 설정해야 한다. 리스너는 사용자 지정 뷰와 연결된 사용자 지정 리스너이거나 포커스 상실 또는 텍스트 변경과 같은 일반 이벤트일 수 있다. 
+  
+  3. 밑의 예제와 같이 속성 변경과 관련된 리스너를 설정하는 메서드에 @BindingAdapter annotation을 추가한다.
+```kotlin
+@BindingAdapter("app:timeAttrChanged")
+    @JvmStatic fun setListeners(
+            view: MyView,
+            attrChange: InverseBindingListener
+    ) {
+        // Set a listener for click, focus, touch, etc.
+    }
+```
+리스너에는 InverseBindingListener가 매개변수로 포함된다. InverseBindingListener를 사용하면 데이터 바인딩 시스템에 속성이 변경되었음을 알릴 수 있다. 그러면 시스템은 @InverseBindingAdapter를 사용하여 annotation이 추가된 메서드 호출을 시작할 수 있다.
+
+<br>
+
+#### 양방향 데이터 바인딩을 사용하는 무한 루프
+양방향 데이터 바인딩을 사용할 때 무한 루프가 발생하지 않도록 주의해야 한다. 사용자가 속성을 변경하면 @InverseBindingAdapter를 사용하여 annotation이 추가된 메서드가 호출되고 값이 backing 속성에 할당된다. 그러면 결과적으로 @BindingAdapter를 사용하여 annotation이 추가된 메서드가 호출되고, 이것이 @InverseBindingAdapter를 사용하여 annotation이 추가된 메서드를 또 호출하는 식으로 이어진다. 
+따라서 @BindingAdapter를 사용하여 annotation이 추가된 메서드의 새 값과 이전 값을 비교함으로써 발생 가능한 무한 루프를 끊는 것이 중요하다.
+
+<br>
+
+#### 양방향 속성
+밑의 표의 속성을 사용할 때 기본적으로 양방향 데이터 바인딩을 지원한다. 
+
+클래스 | 속성 | 바인딩 어댑터
+-- | -- | --
+AdapterView | android:selectedItemPosition, android:selection | AdapterViewBindingAdapter
+CalendarView | android:date | 	CalendarViewBindingAdapter
+CompoundButton | android:checked | CompoundButtonBindingAdapter
+DatePicker | android:year, android:month, android:day | DatePickerBindingAdapter
+NumberPicker | android:value | 	NumberPickerBindingAdapter
+RadioButton | android:checkedButton | RadioGroupBindingAdapter
+RatingBar | 	android:rating | RatingBarBindingAdapter
+SeekBar | 	android:progress | 	SeekBarBindingAdapter
+TabHost | 	android:currentTab | 	TabHostBindingAdapter
+TextView | 	android:text | 	TextViewBindingAdapter
+TimePicker | android:hour, android:minute | 	TimePickerBindingAdapter
+
+
+<br><br>
+
+[출처 - 안드로이드 공식 문서](https://developer.android.com/topic/libraries/data-binding)
